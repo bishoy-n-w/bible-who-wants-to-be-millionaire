@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>من سيربح المليون - مسابقة الكتاب المقدس</title>
+    <style>
+        :root {
+            --dark-blue: #020b20;
+            --light-blue: #102652;
+            --gold: #d4af37;
+            --gold-gradient: linear-gradient(to bottom, #f7df7e, #d4af37, #aa8621);
+            --correct-green: #2ecc71;
+            --wrong-red: #e74c3c;
+            --text-color: #ffffff;
+            --ladder-width: 200px;
+            --ladder-width-mobile: 160px;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(circle at center, #1a2f63, #020b20);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- Layout & Containers --- */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .active-screen {
+            display: flex;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .game-content-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: margin-right 0.3s ease-in-out, width 0.3s ease-in-out;
+            padding-top: 60px; /* Space for top bar */
+            width: 100%;
+        }
+
+        .game-content-wrapper.squeezed {
+            margin-right: var(--ladder-width);
+            width: calc(100% - var(--ladder-width));
+        }
+
+        /* --- Updated Top Bar --- */
+        .top-bar {
+            width: 100%;
+            height: 60px;
+            padding: 0 20px;
+            display: flex;
+            justify-content: center; /* Center the lifelines */
+            align-items: center;
+            position: absolute;
+            top: 0;
+            z-index: 20;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
+        }
+
+        .lifelines {
+            display: flex;
+            gap: 15px;
+            background: rgba(16, 38, 82, 0.8);
+            padding: 5px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .lifeline-btn {
+            width: 50px;
+            height: 35px;
+            background: transparent;
+            border: 2px solid var(--gold);
+            border-radius: 20px;
+            color: var(--gold);
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s;
+        }
+
+        .lifeline-btn:hover { background: rgba(212, 175, 55, 0.2); transform: scale(1.1); }
+        .lifeline-btn.used { 
+            position: relative; 
+            opacity: 0.5; 
+            cursor: not-allowed; 
+            border-color: #555; 
+            color: #555;
+            transform: none;
+        }
+        .lifeline-btn.used::after {
+            content: '❌';
+            position: absolute;
+            font-size: 24px;
+        }
+
+        /* Absolute positioning for Score button to keep it right */
+        .score-toggle-btn {
+            position: absolute;
+            right: 20px; /* Pinned to right */
+            color: var(--gold); 
+            font-weight: bold; 
+            cursor: pointer; 
+            border: 1px solid var(--gold);
+            padding: 5px 15px;
+            border-radius: 15px;
+            background: rgba(0,0,0,0.6);
+            z-index: 101;
+            font-size: 14px;
+        }
+
+        /* --- Question Area --- */
+        .question-box {
+            width: 90%;
+            max-width: 800px;
+            min-height: 120px;
+            background: linear-gradient(to bottom, #102652, #000);
+            border: 2px solid var(--gold);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+            position: relative;
+            z-index: 10;
+        }
+
+        .answers-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 95%;
+            max-width: 900px;
+            margin-bottom: 20px;
+            z-index: 10;
+        }
+
+        .answer-btn {
+            position: relative;
+            background: linear-gradient(90deg, transparent 0%, #102652 15%, #102652 85%, transparent 100%);
+            border: 1px solid var(--gold);
+            border-radius: 30px;
+            padding: 15px 30px;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: right;
+            display: flex;
+            align-items: center;
+        }
+        
+        .answer-btn:before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0; width: 100%;
+            border-radius: 30px;
+            z-index: -1;
+            transition: background 0.3s;
+        }
+
+        .answer-btn:hover:not([disabled]) {
+            background: #2a4a8a;
+            box-shadow: 0 0 10px var(--gold);
+        }
+
+        .answer-letter {
+            color: var(--gold);
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .selected { background: orange !important; color: black; }
+        .correct { background: var(--correct-green) !important; animation: flashGreen 0.5s infinite alternate; }
+        .wrong { background: var(--wrong-red) !important; }
+        .hidden { visibility: hidden; }
+
+        /* --- Money Ladder --- */
+        .money-ladder {
+            position: fixed;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            height: 100vh;
+            width: var(--ladder-width);
+            background: rgba(2, 11, 32, 0.98);
+            border-left: 2px solid var(--gold);
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            z-index: 90;
+            transform: translateX(110%);
+            transition: transform 0.3s ease-in-out;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+        }
+
+        .money-ladder.show {
+            transform: translateX(0);
+        }
+
+        .ladder-header {
+            height: 50px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            border-bottom: 1px solid #333;
+            flex-shrink: 0;
+        }
+
+        .close-ladder-btn {
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 5px;
+        }
+
+        .ladder-steps-container {
+            display: flex;
+            flex-direction: column-reverse;
+            flex: 1;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .ladder-step {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            color: orange;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            flex: 1;
+            min-height: 0;
+        }
+
+        .ladder-step.active { background: orange; color: black; font-weight: bold; }
+        .ladder-step.safe { color: white; font-weight: bold; }
+
+        /* --- Modals --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: #1a2f63;
+            border: 3px solid var(--gold);
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .explanation-text {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin: 15px 0;
+            text-align: right;
+        }
+
+        .verse {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-right: 4px solid var(--gold);
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .next-btn {
+            background: var(--gold);
+            color: black;
+            border: none;
+            padding: 10px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            border-radius: 5px;
+        }
+
+        .timer-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 5px solid white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin: 20px auto;
+        }
+
+        .logo-area {
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, #2a4a8a, transparent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            border: 4px solid var(--gold);
+            font-size: 60px;
+        }
+
+        .start-btn {
+            background: var(--gold-gradient);
+            border: none;
+            padding: 15px 50px;
+            font-size: 2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 0 20px var(--gold);
+            animation: pulse 2s infinite;
+        }
+
+        .full-screen-btn {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid white;
+            padding: 5px 10px;
+            font-size: 12px;
+            z-index: 1000;
+            cursor: pointer;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes flashGreen { from { background: var(--correct-green); } to { background: #56f399; } }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        /* --- Mobile Responsive --- */
+        @media (max-width: 900px) {
+            .game-content-wrapper.squeezed {
+                margin-right: var(--ladder-width-mobile);
+                width: calc(100% - var(--ladder-width-mobile));
+            }
+            .money-ladder { width: var(--ladder-width-mobile); }
+            
+            .answers-grid { grid-template-columns: 1fr; gap: 8px; }
+            .question-box { font-size: 1.1rem; padding: 10px; margin-top: 5px; min-height: 80px; }
+            .answer-btn { padding: 8px 15px; font-size: 1rem; }
+            .game-content-wrapper { padding-top: 50px; }
+            
+            /* Compact Header on mobile */
+            .top-bar { height: 50px; }
+            .lifelines { gap: 10px; padding: 5px 10px; }
+            .lifeline-btn { width: 40px; height: 30px; font-size: 14px; }
+            
+            .ladder-step { font-size: 11px; padding: 0 5px; }
+        }
+
+        @media (max-height: 450px) {
+            .logo-area { width: 80px; height: 80px; font-size: 30px; margin-bottom: 10px; }
+            .start-btn { font-size: 1.2rem; padding: 10px 30px; }
+            .ladder-step { font-size: 10px; line-height: 1; }
+            .ladder-header { height: 30px; }
+        }
+
+        #portrait-warning {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            z-index: 9999;
+            color: white;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        @media screen and (orientation: portrait) {
+            #portrait-warning { display: flex; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="portrait-warning">
+        <div style="font-size: 50px;">🔄</div>
+        <h1>يرجى تدوير الجهاز للوضع الأفقي</h1>
+        <p>Landscape Mode Required</p>
+    </div>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            if (type === 'correct') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(500, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            } else if (type === 'tick') {
+                osc.type = 'square'; osc.frequency.value = 800; gainNode.gain.value = 0.05; osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+            } else if (type === 'intro') {
+                [440, 554, 659].forEach(freq => {
+                    const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination);
+                    o.frequency.value = freq; g.gain.setValueAtTime(0.1, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 2);
+                    o.start(); o.stop(audioCtx.currentTime + 2);
+                });
+            }
+        }
+    </script>
+
+    <div id="start-screen" class="screen active-screen">
+        <div class="logo-area">✝️</div>
+        <h1 style="text-align: center; color: var(--gold);">مسابقة الكتاب المقدس</h1>
+        <p>15 سؤالاً للوصول إلى المليون</p>
+        <button class="start-btn" onclick="startGame()">ابدأ اللعبة</button>
+    </div>
+
+    <div id="game-screen" class="screen">
+        
+        <div class="top-bar">
+            <div class="lifelines">
+                <button class="lifeline-btn" id="btn-5050" onclick="use5050()" title="حذف إجابتين">50:50</button>
+                <button class="lifeline-btn" id="btn-audience" onclick="useAudience()" title="رأي الجمهور">👥</button>
+                <button class="lifeline-btn" id="btn-phone" onclick="usePhone()" title="اتصال بصديق">📞</button>
+                <button class="lifeline-btn" id="btn-swap" onclick="useSwap()" title="تغيير السؤال">🔄</button>
+            </div>
+            <div class="score-toggle-btn" onclick="toggleLadder()">💰 الرصيد</div>
+        </div>
+
+        <div class="game-content-wrapper" id="game-wrapper">
+            <div class="question-box" id="question-text">
+                جاري تحميل السؤال...
+            </div>
+
+            <div class="answers-grid" id="answers-area">
+                </div>
+        </div>
+
+        <div class="money-ladder" id="ladder">
+            <div class="ladder-header">
+                <button class="close-ladder-btn" onclick="toggleLadder()">✖</button>
+            </div>
+            <div class="ladder-steps-container" id="ladder-steps">
+                </div>
+        </div>
+        
+    </div>
+
+    <div id="feedback-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="feedback-title">نتيجة الإجابة</h2>
+            <div id="feedback-body" class="explanation-text"></div>
+            <button class="next-btn" id="next-q-btn" onclick="nextQuestion()">السؤال التالي</button>
+        </div>
+    </div>
+
+    <div id="phone-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>اتصال بصديق</h2>
+            <p>لديك 30 ثانية لقراءة السؤال لصديقك</p>
+            <div class="timer-circle" id="timer-display">30</div>
+            <button class="next-btn" onclick="startTimer()">ابدأ التوقيت</button>
+            <button class="next-btn" style="background: #555; color: white" onclick="closePhoneModal()">إغلاق</button>
+        </div>
+    </div>
+
+    <div id="audience-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>رأي الجمهور</h2>
+            <div id="audience-bars" style="display: flex; gap: 10px; height: 200px; align-items: flex-end; justify-content: center; margin-top:20px;"></div>
+            <button class="next-btn" onclick="document.getElementById('audience-modal').style.display='none'">إغلاق</button>
+        </div>
+    </div>
+
+    <div id="end-screen" class="screen">
+        <h1 id="end-title" style="color: var(--gold);">انتهت اللعبة</h1>
+        <h2 id="final-score">الرصيد النهائي: 0</h2>
+        <button class="start-btn" onclick="startGame()">العب مرة أخرى</button>
+    </div>
+
+    <button class="full-screen-btn" onclick="toggleFullScreen()">⛶ Full Screen</button>
+
+    <script>
+        const allQuestions = [
+            {
+                q: "ما هو أول وعد قطعه الله للبشر؟",
+                options: ["أن يكثر نسلهم كنجوم السماء", "أن يرثوا الأرض", "أن نسل المرأة يسحق رأس الحية", "أن لا يعود الطوفان"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: أن نسل المرأة يسحق رأس الحية. جاء هذا الوعد مباشرة بعد سقوط آدم وحواء (تكوين 3: 15)."
+            },
+            {
+                q: "متى كان أول سماح إلهي للإنسان بأكل اللحوم؟",
+                options: ["لآدم وحواء في الجنة", "لآدم بعد الطرد من الجنة", "لنوح وبنيه بعد الطوفان", "لإبراهيم عند استضافة الملاكين"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: لنوح وبنيه. قبل الطوفان كان طعام الإنسان العشب والبقول (تكوين 9: 3)."
+            },
+            {
+                q: "من هو أول إنسان ذكر الكتاب أنه كان 'ناجحاً' وكان الرب معه؟",
+                options: ["داود الملك", "يوسف الصديق", "سليمان الحكيم", "يشوع بن نون"],
+                correct: 1,
+                explanation: "الإجابة الصحيحة: يوسف الصديق. 'وَكَانَ الرَّبُّ مَعَ يُوسُفَ فَكَانَ رَجُلاً نَاجِحًا' (تكوين 39: 2)."
+            },
+            {
+                q: "ما هي أول 'عقوبة إلهية جماعية' حلت بالبشر؟",
+                options: ["حرق سدوم وعمورة", "ضربات مصر العشر", "تبلبل الألسنة في بابل", "الطوفان"],
+                correct: 3,
+                explanation: "الإجابة الصحيحة: الطوفان. هو أول عقوبة أهلكت 'كل جسد' باستثناء من في الفلك (تكوين 7)."
+            },
+            {
+                q: "ما هي أول حرب بين ملوك سجلها الكتاب المقدس؟",
+                options: ["حرب أريحا", "حرب كدر لعومر (4 ضد 5)", "حرب عماليق", "حرب الفلسطينيين"],
+                correct: 1,
+                explanation: "الإجابة الصحيحة: حرب الملوك الأربعة ضد الخمسة في أيام إبراهيم ولوط (تكوين 14)."
+            },
+            {
+                q: "لمن قيلت كلمة 'خطية' لأول مرة في الكتاب؟",
+                options: ["لآدم", "لحواء", "للحية", "لقايين"],
+                correct: 3,
+                explanation: "الإجابة الصحيحة: لقايين. 'عِنْدَ الْبَابِ خَطِيَّةٌ رَابِضَةٌ' (تكوين 4: 7)."
+            },
+            {
+                q: "من هو أول شخص ذكر الكتاب صراحة أنه 'سُبي'؟",
+                options: ["دانيال", "صدقيا", "يهوياكين", "لوط"],
+                correct: 3,
+                explanation: "الإجابة الصحيحة: لوط. سبي في حرب الملوك قبل أن ينقذه إبراهيم (تكوين 14)."
+            },
+            {
+                q: "من هي أول امرأة لُعنت في الكتاب المقدس؟",
+                options: ["حواء", "امرأة أيوب", "إيزابيل", "امرأة لوط"],
+                correct: 3,
+                explanation: "الإجابة الصحيحة: امرأة لوط. صارت عمود ملح لأنها نظرت للوراء (تكوين 19)."
+            },
+            {
+                q: "من هو أول شخص قيل عنه في الكتاب إنه 'كاهن'؟",
+                options: ["هابيل", "نوح", "ملكي صادق", "هارون"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: ملكي صادق. 'وَكَانَ كَاهِنًا لِللهِ الْعَلِيِّ' (تكوين 14: 18)."
+            },
+            {
+                q: "أين ذكرت عبارة 'بيت الله' لأول مرة؟",
+                options: ["في خيمة الاجتماع", "في الهيكل", "في قول يعقوب (بيت إيل)", "في العلية"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: في قول يعقوب عندما رأى السلم: 'مَا هذَا إِلاَّ بَيْتُ اللهِ' (تكوين 28: 17)."
+            },
+            {
+                q: "ما هي أول كذبة وردت في الكتاب المقدس؟",
+                options: ["أحارس أنا لأخي", "لن تموتا", "هي أختي", "أنا عيسو بكرك"],
+                correct: 1,
+                explanation: "الإجابة الصحيحة: قول الحية لحواء 'لن تموتا'. الشيطان هو الكذاب وأبو الكذاب (تكوين 3: 4)."
+            },
+            {
+                q: "من هو أول من ورد في الكتاب أنه أحسن إلى المسيئين إليه؟",
+                options: ["موسى", "داود", "يوسف", "استفانوس"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: يوسف. صفح عن إخوته الذين باعوه وقال 'أَنْتُمْ قَصَدْتُمْ لِي شَرًّا، أَمَّا اللهُ فَقَصَدَ بِهِ خَيْرًا'."
+            },
+            {
+                q: "متى ذكرت 'العشور' لأول مرة في الكتاب؟",
+                options: ["في شريعة موسى", "في نذر يعقوب", "عند لقاء إبراهيم وملكي صادق", "قربان هابيل"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: إبراهيم أعطى ملكي صادق عشراً من كل شيء (تكوين 14: 20)."
+            },
+            {
+                q: "من هو أول إنسان حلم أحلاماً نبوية وتحققت؟",
+                options: ["دانيال", "فرعون", "نبوخذ نصر", "يوسف"],
+                correct: 3,
+                explanation: "الإجابة الصحيحة: يوسف. حلم بسجود حزم إخوته له وتحقق ذلك (تكوين 37)."
+            },
+            {
+                q: "من هو أول إنسان صارع مع الله وغلب؟",
+                options: ["إبراهيم", "موسى", "يعقوب", "إيليا"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: يعقوب. قيل له: 'لأَنَّكَ جَاهَدْتَ مَعَ اللهِ وَالنَّاسِ وَقَدَرْتَ' (تكوين 32)."
+            },
+            {
+                q: "من هو أول شخص أمره الله أن يلهج في شريعته 'نهاراً وليلاً'؟",
+                options: ["داود", "عزرا", "يشوع", "صموئيل"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: يشوع بن نون عند استلام القيادة (يشوع 1: 8)."
+            },
+            {
+                q: "من هما الساحران اللذان قاوما موسى وذكر بولس اسميهما؟",
+                options: ["قورح وداثان", "ينيس ويمبريس", "هيمينايوس وفيليتس", "بلعام وبالاق"],
+                correct: 1,
+                explanation: "الإجابة الصحيحة: ينيس ويمبريس. ذكرهما بولس في 2 تيموثاوس 3: 8."
+            },
+            {
+                q: "ما هو 'آخر عدو' سيبطل؟",
+                options: ["إبليس", "الخطية", "الموت", "الوحش"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: الموت. 'آخِرُ عَدُوٍّ يُبْطَلُ هُوَ الْمَوْتُ' (1 كورنثوس 15: 26)."
+            },
+            {
+                q: "من هو القاضي الذي نذر نذراً وحزن جداً لتنفيذه في ابنته؟",
+                options: ["جدعون", "شمشون", "يفتاح الجلعادي", "صموئيل"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: يفتاح الجلعادي (قضاة 11)."
+            },
+            {
+                q: "من هو النبي الذي وصف بأنه 'أشقر مع حلاوة في العينين'؟",
+                options: ["يوسف", "موسى", "داود", "دانيال"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: داود الملك (1 صموئيل 16: 12)."
+            },
+            {
+                q: "من هما الزوجان اللذان جعلا بيتهما كنيسة وذكرهما بولس؟",
+                options: ["حنانيا وسفيرة", "أكيلا وبريسكلا", "زكريا وأليصابات", "فليمون وأبفية"],
+                correct: 1,
+                explanation: "الإجابة الصحيحة: أكيلا وبريسكلا (رومية 16)."
+            },
+            {
+                q: "من هو الرسول الذي دعاه الرب خصيصاً ليشهد في 'رومية'؟",
+                options: ["بطرس", "مرقس", "بولس", "لوقا"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: بولس. 'يَنْبَغِي أَنْ تَشْهَدَ فِي رُومِيَةَ أَيْضًا' (أعمال 23: 11)."
+            },
+            {
+                q: "من هو الطفل الذي خدم الهيكل منذ طفولته؟",
+                options: ["يسوع", "صموئيل", "يوحنا المعمدان", "إرميا"],
+                correct: 1,
+                explanation: "الإجابة الصحيحة: صموئيل. كان يخدم أمام الرب وهو صبي (1 صموئيل 2)."
+            },
+            {
+                q: "من هو الطفل الذي 'درس الكتب المقدسة' منذ طفولته؟",
+                options: ["تيموثاوس", "صموئيل", "شاول", "لوقا"],
+                correct: 0,
+                explanation: "الإجابة الصحيحة: تيموثاوس. 'وَأَنَّكَ مُنْذُ الطُّفُولِيَّةِ تَعْرِفُ الْكُتُبَ الْمُقَدَّسَةَ' (2 تيموثاوس 3: 15)."
+            },
+            {
+                q: "من هو الشخص الذي بشره بولس في السجن وعمده في بيته؟",
+                options: ["كيرنيليوس", "سجان فيلبي", "ليديا", "كريسبس"],
+                correct: 1,
+                explanation: "الإجابة الصحيحة: سجان فيلبي (أعمال 16)."
+            },
+            {
+                q: "كم عاش أبونا إسحق (أطول الآباء عمراً)؟",
+                options: ["175 سنة", "147 سنة", "180 سنة", "120 سنة"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: 180 سنة (تكوين 35: 28)."
+            },
+            {
+                q: "من هو النبي الذي عاقبه الرب برفض دخوله أرض الموعد؟",
+                options: ["هارون", "موسى", "يشوع", "إيليا"],
+                correct: 1,
+                explanation: "الإجابة الصحيحة: موسى. بسبب ضرب الصخرة مرتين وعدم تقديس الرب (عدد 20)."
+            },
+            {
+                q: "من هو أكبر الناس عمراً في تاريخ البشرية؟",
+                options: ["آدم", "نوح", "متوشالح", "يارد"],
+                correct: 2,
+                explanation: "الإجابة الصحيحة: متوشالح. عاش 969 سنة (تكوين 5: 27)."
+            },
+            {
+                q: "من هو الراعي الصغير الذي قتل أسداً؟",
+                options: ["شمشون", "داود", "عاموس", "بناياهو"],
+                correct: 1,
+                explanation: "الإجابة الصحيحة: داود. قتل الأسد والدب دفاعاً عن الغنم (1 صموئيل 17)."
+            },
+            {
+                q: "من هو الغني 'الأحمق' الذي أنقذته زوجته الحكيمة من الموت؟",
+                options: ["هامان", "نابال الكرملي", "الغني الغبي", "لابان"],
+                correct: 1,
+                explanation: "الإجابة الصحيحة: نابال الكرملي. وزوجته هي أبيجايل (1 صموئيل 25)."
+            }
+        ];
+
+        let currentQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let lifelines = { fifty: true, audience: true, phone: true, swap: true };
+        const moneyLevels = [100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000, 500000, "1 MILLION"];
+        
+        function startGame() {
+            playSound('intro');
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById('game-screen').classList.add('active-screen');
+            lifelines = { fifty: true, audience: true, phone: true, swap: true };
+            document.querySelectorAll('.lifeline-btn').forEach(b => b.classList.remove('used'));
+            score = 0;
+            currentQuestionIndex = 0;
+            const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
+            currentQuestions = shuffled.slice(0, 15);
+            renderLadder();
+            loadQuestion();
+        }
+
+        function renderLadder() {
+            const container = document.getElementById('ladder-steps');
+            container.innerHTML = '';
+            moneyLevels.forEach((val, index) => {
+                const step = document.createElement('div');
+                step.className = `ladder-step ${[4, 9, 14].includes(index) ? 'safe' : ''}`;
+                step.innerHTML = `<span>${index+1}</span> <span>$${val}</span>`;
+                if (index === currentQuestionIndex) step.classList.add('active'); 
+                container.appendChild(step);
+            });
+        }
+
+        function updateLadderHighlight() {
+            const container = document.getElementById('ladder-steps');
+            if(!container.hasChildNodes()) { renderLadder(); return; }
+            const steps = container.children;
+            for(let i=0; i<steps.length; i++) {
+                steps[i].classList.remove('active');
+                if(i === currentQuestionIndex) steps[i].classList.add('active');
+            }
+        }
+
+        function loadQuestion() {
+            updateLadderHighlight();
+            const qData = currentQuestions[currentQuestionIndex];
+            document.getElementById('question-text').innerText = qData.q;
+            const grid = document.getElementById('answers-area');
+            grid.innerHTML = '';
+            qData.options.forEach((opt, index) => {
+                const btn = document.createElement('div');
+                btn.className = 'answer-btn';
+                btn.innerHTML = `<span class="answer-letter">${['A','B','C','D'][index]}:</span> ${opt}`;
+                btn.onclick = () => handleAnswer(index, btn);
+                btn.id = `opt-${index}`;
+                grid.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(selectedIndex, btnElement) {
+            const allBtns = document.querySelectorAll('.answer-btn');
+            allBtns.forEach(b => b.style.pointerEvents = 'none');
+            btnElement.classList.add('selected');
+            playSound('tick'); 
+            setTimeout(() => {
+                const correctIndex = currentQuestions[currentQuestionIndex].correct;
+                if (selectedIndex === correctIndex) {
+                    btnElement.classList.add('correct');
+                    playSound('correct');
+                    score = moneyLevels[currentQuestionIndex];
+                    setTimeout(() => showFeedback(true), 1500);
+                } else {
+                    btnElement.classList.add('wrong');
+                    document.getElementById(`opt-${correctIndex}`).classList.add('correct');
+                    playSound('wrong');
+                    setTimeout(() => showFeedback(false), 1500);
+                }
+            }, 1000); 
+        }
+
+        function showFeedback(isCorrect) {
+            const modal = document.getElementById('feedback-modal');
+            const title = document.getElementById('feedback-title');
+            const body = document.getElementById('feedback-body');
+            const btn = document.getElementById('next-q-btn');
+            const qData = currentQuestions[currentQuestionIndex];
+            modal.style.display = 'flex';
+            if (isCorrect) {
+                title.innerText = "إجابة صحيحة! 🎉";
+                title.style.color = "var(--correct-green)";
+                btn.onclick = nextQuestion;
+                btn.innerText = "السؤال التالي";
+            } else {
+                title.innerText = "إجابة خاطئة 😢";
+                title.style.color = "var(--wrong-red)";
+                btn.onclick = endGame;
+                btn.innerText = "إنهاء اللعبة";
+            }
+            body.innerHTML = `<div style="font-weight:bold; margin-bottom:10px;">الإجابة الصحيحة: ${qData.options[qData.correct]}</div><div class="verse">${qData.explanation}</div>`;
+        }
+
+        function nextQuestion() {
+            document.getElementById('feedback-modal').style.display = 'none';
+            currentQuestionIndex++;
+            if (currentQuestionIndex >= 15) { winGame(); } else { loadQuestion(); }
+        }
+
+        function endGame() {
+            document.getElementById('feedback-modal').style.display = 'none';
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById('end-screen').classList.add('active-screen');
+            let finalMoney = "$0";
+            if (currentQuestionIndex >= 10) finalMoney = "$32,000";
+            else if (currentQuestionIndex >= 5) finalMoney = "$1,000";
+            document.getElementById('final-score').innerText = `لقد ربحت: ${finalMoney}`;
+        }
+
+        function winGame() {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById('end-screen').classList.add('active-screen');
+            document.getElementById('end-title').innerText = "مبروك! مليونير! 🏆";
+            document.getElementById('final-score').innerText = "الرصيد النهائي: $1,000,000";
+            playSound('intro'); 
+        }
+
+        function use5050() {
+            if (!lifelines.fifty) return;
+            lifelines.fifty = false;
+            document.getElementById('btn-5050').classList.add('used');
+            const correctIndex = currentQuestions[currentQuestionIndex].correct;
+            let wrongIndices = [0,1,2,3].filter(i => i !== correctIndex).sort(() => Math.random() - 0.5);
+            document.getElementById(`opt-${wrongIndices[0]}`).classList.add('hidden');
+            document.getElementById(`opt-${wrongIndices[1]}`).classList.add('hidden');
+        }
+
+        function useSwap() {
+            if (!lifelines.swap) return;
+            lifelines.swap = false;
+            document.getElementById('btn-swap').classList.add('used');
+            let newQ; do { newQ = allQuestions[Math.floor(Math.random() * allQuestions.length)]; } while (currentQuestions.includes(newQ));
+            currentQuestions[currentQuestionIndex] = newQ;
+            loadQuestion();
+        }
+
+        function useAudience() {
+            if (!lifelines.audience) return;
+            lifelines.audience = false;
+            document.getElementById('btn-audience').classList.add('used');
+            const correctIndex = currentQuestions[currentQuestionIndex].correct;
+            let percentages = [0,0,0,0];
+            let correctPerc = Math.floor(Math.random() * 30) + 50;
+            percentages[correctIndex] = correctPerc;
+            let remaining = 100 - correctPerc;
+            for(let i=0; i<4; i++) { if(i !== correctIndex) { let share = Math.floor(Math.random() * remaining); percentages[i] = share; remaining -= share; } }
+            const modal = document.getElementById('audience-modal');
+            const barsContainer = document.getElementById('audience-bars');
+            barsContainer.innerHTML = '';
+            percentages.forEach((p, i) => {
+                let bar = document.createElement('div');
+                bar.style.width = '40px'; bar.style.background = '#d4af37'; bar.style.height = `${p * 2}px`; bar.style.display = 'flex'; bar.style.flexDirection = 'column-reverse'; bar.style.alignItems = 'center';
+                bar.innerHTML = `<span style="color:white; margin-bottom:-20px;">${['A','B','C','D'][i]}</span><span style="color:black; font-weight:bold">${p}%</span>`;
+                barsContainer.appendChild(bar);
+            });
+            modal.style.display = 'flex';
+        }
+
+        function usePhone() {
+            if (!lifelines.phone) return;
+            lifelines.phone = false;
+            document.getElementById('btn-phone').classList.add('used');
+            document.getElementById('phone-modal').style.display = 'flex';
+            document.getElementById('timer-display').innerText = "30";
+        }
+        
+        let timerInterval;
+        function startTimer() {
+            let timeLeft = 30; const display = document.getElementById('timer-display'); playSound('tick');
+            if(timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--; display.innerText = timeLeft;
+                if(timeLeft <= 5) display.style.color = "red";
+                if(timeLeft <= 0) { clearInterval(timerInterval); playSound('wrong'); }
+            }, 1000);
+        }
+        function closePhoneModal() { clearInterval(timerInterval); document.getElementById('phone-modal').style.display = 'none'; }
+
+        function toggleLadder() {
+            const ladder = document.getElementById('ladder');
+            const wrapper = document.getElementById('game-wrapper');
+            const isShowing = ladder.classList.contains('show');
+            if (isShowing) {
+                ladder.classList.remove('show');
+                wrapper.classList.remove('squeezed');
+            } else {
+                ladder.classList.add('show');
+                wrapper.classList.add('squeezed');
+            }
+        }
+        function toggleFullScreen() { if (!document.fullscreenElement) { document.documentElement.requestFullscreen(); } else { if (document.exitFullscreen) { document.exitFullscreen(); } } }
+    </script>
+</body>
+</html>
